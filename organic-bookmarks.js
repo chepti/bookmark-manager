@@ -10,6 +10,8 @@ class OrganicBookmarkGarden {
         this.currentZoomLevel = 1; // רמת זום נוכחית
         this.maxNodesPerLevel = 50; // מקסימום נודים לרמה
         this.clusterThreshold = 30; // מרחק לקיבוץ
+        this.maxNodeRadius = 50; // גודל מקסימלי לעיגול
+        this.branchLength = 80; // אורך ענף מהתיקיה
         
         // ניסיון לטעון סימניות אמיתיות מכרום
         this.loadChromeBookmarks().then(() => {
@@ -133,6 +135,18 @@ class OrganicBookmarkGarden {
         return favicons[domain] || '🔗';
     }
 
+    // פביקון אמיתי לרמת זום גבוהה
+    getRealFaviconUrl(url) {
+        if (!url) return null;
+        
+        try {
+            const domain = new URL(url).hostname;
+            return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+        } catch {
+            return null;
+        }
+    }
+
     getTagsForUrl(url) {
         if (!url) return [];
         
@@ -243,6 +257,7 @@ class OrganicBookmarkGarden {
             this.currentZoomLevel = newLevel;
             console.log(`🔍 עדכון רמת פירוט: ${newLevel}`);
             this.updateNodeVisibility();
+            this.updateFaviconDisplay(zoomScale);
         }
     }
 
@@ -265,6 +280,46 @@ class OrganicBookmarkGarden {
             const shouldShowSource = this.shouldShowNode(d.source);
             const shouldShowTarget = this.shouldShowNode(d.target);
             return (shouldShowSource && shouldShowTarget) ? 0.7 : 0.1;
+        });
+    }
+
+    updateFaviconDisplay(zoomScale) {
+        if (!this.nodes) return;
+        
+        // החלפה לפביקונים אמיתיים ברמת זום גבוהה
+        const useRealFavicons = zoomScale > 2;
+        const self = this; // שמירת הקשר
+        
+        this.nodes.selectAll('.bookmark-icon').each(function(d) {
+            const iconElement = d3.select(this);
+            
+            if (useRealFavicons && d.data.url) {
+                const realFaviconUrl = self.getRealFaviconUrl(d.data.url);
+                if (realFaviconUrl) {
+                    // החלפה לתמונת פביקון אמיתית
+                    iconElement.style('display', 'none');
+                    
+                    // בדיקה אם כבר יש תמונה
+                    let imageElement = d3.select(iconElement.node().parentNode).select('.real-favicon');
+                    if (imageElement.empty()) {
+                        imageElement = d3.select(iconElement.node().parentNode)
+                            .append('image')
+                            .attr('class', 'real-favicon')
+                            .attr('width', 16)
+                            .attr('height', 16)
+                            .attr('x', -8)
+                            .attr('y', -8);
+                    }
+                    
+                    imageElement
+                        .style('display', 'block')
+                        .attr('href', realFaviconUrl);
+                }
+            } else {
+                // חזרה לאימוג'ים
+                iconElement.style('display', 'block');
+                d3.select(iconElement.node().parentNode).select('.real-favicon').style('display', 'none');
+            }
         });
     }
 
@@ -315,13 +370,13 @@ class OrganicBookmarkGarden {
         // יוצר את המבנה ההיררכי עם D3
         this.root = d3.hierarchy(this.bookmarksData);
         
-        // חישוב מיקומים קבועים במבנה רדיאלי
-        this.calculateStaticPositions();
+        // חישוב מיקומים קבועים במבנה פרח/ענפים
+        this.calculateBranchPositions();
         this.updateVisualization();
     }
 
-    calculateStaticPositions() {
-        console.log('📍 מחשב מיקומים קבועים...');
+    calculateBranchPositions() {
+        console.log('🌸 מחשב מיקומים בסגנון ענפי פרח...');
         
         const nodes = this.root.descendants();
         
@@ -329,7 +384,7 @@ class OrganicBookmarkGarden {
         this.root.x = this.centerX;
         this.root.y = this.centerY;
         
-        // חישוב מיקומים רדיאליים לכל רמה
+        // חישוב מיקומים בסגנון ענפים לכל רמה
         const levels = {};
         nodes.forEach(node => {
             if (!levels[node.depth]) levels[node.depth] = [];
@@ -337,17 +392,11 @@ class OrganicBookmarkGarden {
         });
 
         Object.keys(levels).forEach(depth => {
+            if (depth == 0) return; // שורש כבר במרכז
+            
             const levelNodes = levels[depth];
-            const radius = Math.min(depth * 120, this.width * 0.4); // מגביל רדיוס
             
             levelNodes.forEach((node, index) => {
-                if (depth == 0) return; // שורש כבר במרכז
-                
-                // יצירת זווית עם קצת אקראיות לטבעיות
-                const baseAngle = (index / levelNodes.length) * 2 * Math.PI;
-                const randomOffset = (Math.random() - 0.5) * 0.5; // אקראיות קלה
-                const angle = baseAngle + randomOffset;
-                
                 const nodeKey = `${node.data.name}_${depth}`;
                 
                 // בדיקה אם יש מיקום שמור
@@ -356,15 +405,52 @@ class OrganicBookmarkGarden {
                     node.x = saved.x;
                     node.y = saved.y;
                 } else {
-                    // מיקום חדש
-                    node.x = this.centerX + Math.cos(angle) * radius;
-                    node.y = this.centerY + Math.sin(angle) * radius;
+                    // חישוב מיקום בסגנון ענפים
+                    this.calculateFlowerPosition(node, index, levelNodes.length);
                     
                     // שמירת המיקום
                     this.savedPositions.set(nodeKey, {x: node.x, y: node.y});
                 }
             });
         });
+    }
+
+    calculateFlowerPosition(node, index, totalSiblings) {
+        const parent = node.parent;
+        if (!parent) return;
+        
+        if (node.depth === 1) {
+            // רמה ראשונה - עיגול סביב השורש
+            const radius = Math.min(150, this.width * 0.2);
+            const angle = (index / totalSiblings) * 2 * Math.PI;
+            
+            node.x = parent.x + Math.cos(angle) * radius;
+            node.y = parent.y + Math.sin(angle) * radius;
+        } else {
+            // רמות עמוקות יותר - ענפים שיוצאים מההורה
+            const branchAngle = this.calculateBranchAngle(node, index, totalSiblings);
+            const distance = this.branchLength * (0.8 + Math.random() * 0.4); // וריאציה באורך
+            
+            node.x = parent.x + Math.cos(branchAngle) * distance;
+            node.y = parent.y + Math.sin(branchAngle) * distance;
+        }
+    }
+
+    calculateBranchAngle(node, index, totalSiblings) {
+        const parent = node.parent;
+        
+        // זווית בסיסית של ההורה (אם יש לו הורה)
+        let parentAngle = 0;
+        if (parent && parent.parent) {
+            parentAngle = Math.atan2(parent.y - parent.parent.y, parent.x - parent.parent.x);
+        }
+        
+        // פיזור הענפים סביב כיוון ההורה
+        const spreadAngle = Math.PI * 0.6; // 108 מעלות
+        const startAngle = parentAngle - spreadAngle / 2;
+        const angleStep = totalSiblings > 1 ? spreadAngle / (totalSiblings - 1) : 0;
+        
+        return startAngle + (index * angleStep);
     }
 
     updateVisualization() {
@@ -400,12 +486,22 @@ class OrganicBookmarkGarden {
 
         this.links = linkEnter.merge(linkSelection);
 
-        // עדכון פוזיציות הקווים
+        // עדכון פוזיציות הקווים בסגנון ענפים
         this.links.attr('d', d => {
             const dx = d.target.x - d.source.x;
             const dy = d.target.y - d.source.y;
-            const dr = Math.sqrt(dx * dx + dy * dy) * 0.2;
-            return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // עיקול קל לענפים ארוכים
+            const curvature = Math.min(distance * 0.15, 30);
+            const midX = (d.source.x + d.target.x) / 2;
+            const midY = (d.source.y + d.target.y) / 2;
+            
+            // הוספת נקודת ביניים מעט בצד לעיקול טבעי
+            const perpX = -dy / distance * curvature;
+            const perpY = dx / distance * curvature;
+            
+            return `M${d.source.x},${d.source.y}Q${midX + perpX},${midY + perpY} ${d.target.x},${d.target.y}`;
         });
     }
 
@@ -427,7 +523,7 @@ class OrganicBookmarkGarden {
             .attr('transform', d => `translate(${d.x},${d.y}) scale(0)`)
             .style('opacity', 0);
 
-        // עיגול רקע עם גודל דינמי
+        // עיגול רקע עם גודל מוגבל
         nodeEnter.append('circle')
             .attr('class', 'bookmark-circle')
             .attr('r', d => this.getNodeRadius(d))
@@ -435,7 +531,7 @@ class OrganicBookmarkGarden {
             .attr('stroke', '#fff')
             .attr('stroke-width', 2);
 
-        // אייקון/פביקון
+        // אייקון/פביקון (אימוג'י)
         nodeEnter.append('text')
             .attr('class', 'bookmark-icon')
             .attr('text-anchor', 'middle')
@@ -488,20 +584,26 @@ class OrganicBookmarkGarden {
     }
 
     getNodeRadius(d) {
-        if (d.depth === 0) return 40; // שורש
-        if (d.data.isMore) return 15; // נוד "עוד..."
-        if (d.children) return Math.min(30, 15 + d.children.length); // תיקיות לפי כמות תוכן
-        return 12; // סימניות רגילות
+        let baseRadius;
+        
+        if (d.depth === 0) baseRadius = 40; // שורש
+        else if (d.data.isMore) baseRadius = 15; // נוד "עוד..."
+        else if (d.children) baseRadius = Math.min(25, 12 + d.children.length * 0.8); // תיקיות
+        else baseRadius = 10; // סימניות רגילות
+        
+        // הגבלה לגודל מקסימלי
+        return Math.min(baseRadius, this.maxNodeRadius);
     }
 
     getIconSize(d) {
         const radius = this.getNodeRadius(d);
-        return Math.max(12, radius * 0.8) + 'px';
+        return Math.max(10, Math.min(radius * 0.7, 20)) + 'px';
     }
 
     getDisplayName(d) {
         const name = d.data.name;
-        const maxLength = this.getNodeRadius(d) > 20 ? 15 : 10;
+        const radius = this.getNodeRadius(d);
+        const maxLength = radius > 20 ? 15 : 10;
         return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
     }
 
@@ -637,8 +739,8 @@ class OrganicBookmarkGarden {
             this.expandedNodes.add(d.data.name);
         }
         
-        // חישוב מיקומים מחדש
-        this.calculateStaticPositions();
+        // חישוב מיקומים מחדש בסגנון ענפים
+        this.calculateBranchPositions();
         this.updateVisualization();
     }
 
@@ -678,7 +780,7 @@ class OrganicBookmarkGarden {
             }
         });
         
-        this.calculateStaticPositions();
+        this.calculateBranchPositions();
         this.updateVisualization();
     }
 
@@ -695,7 +797,7 @@ class OrganicBookmarkGarden {
         // הוספה לשורש
         this.bookmarksData.children.push(newBranch);
         this.root = d3.hierarchy(this.bookmarksData);
-        this.calculateStaticPositions();
+        this.calculateBranchPositions();
         this.updateVisualization();
     }
 

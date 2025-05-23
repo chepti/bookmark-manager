@@ -172,6 +172,16 @@
             clip-path: circle();
         }
 
+        .real-favicon {
+            border-radius: 50%;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            transition: all 0.3s ease;
+        }
+
+        .bookmark-node:hover .real-favicon {
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 10px rgba(79, 195, 247, 0.4));
+        }
+
         .tooltip {
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
