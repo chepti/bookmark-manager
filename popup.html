@@ -13,7 +13,7 @@
 
         body {
             width: 350px;
-            min-height: 200px;
+            min-height: 250px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -90,6 +90,18 @@
             transform: translateY(-2px);
         }
 
+        .btn-garden {
+            background: linear-gradient(45deg, #4caf50, #81c784);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-garden:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
         .quick-stats {
             margin-top: 15px;
             padding-top: 15px;
@@ -115,6 +127,9 @@
             <button class="btn btn-primary" id="openFullPageBtn">
                 🚀 פתח בדף מלא
             </button>
+            <button class="btn btn-garden" id="openGardenBtn">
+                🌳 הגן הדיגיטלי החדש!
+            </button>
             <button class="btn btn-secondary" id="refreshBtn">
                 🔄 רענן סימניות
             </button>
@@ -124,7 +139,7 @@
             טוען סטטיסטיקות...
         </div>
 
-        <div class="version">גרסה 2.0</div>
+        <div class="version">גרסה 2.1 - עם הגן הדיגיטלי!</div>
     </div>
 
     <script src="popup-script.js"></script>

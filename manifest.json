@@ -1,16 +1,17 @@
 {
   "manifest_version": 3,
   "name": "מארגן הסימניות המתקדם",
-  "description": "כלי מתקדם לניהול וארגון סימניות בכרום עם ממשק יפה ונוח",
-  "version": "2.0",
+  "version": "2.1",
+  "description": "ניהול וארגון חכם של הסימניות שלך עם ממשק ויזואלי אורגני",
   "permissions": [
     "bookmarks",
     "storage",
-    "tabs"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
-    "https://www.google.com/*",
-    "https://icons.duckduckgo.com/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -18,8 +19,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "js": ["content.js"]
     }
   ],
   "action": {
@@ -29,14 +29,22 @@
   "options_page": "bookmarks.html",
   "commands": {
     "open-bookmarks": {
-      "description": "פתח את מארגן הסימניות בדף מלא",
       "suggested_key": {
-        "default": "Ctrl+Shift+B",
-        "mac": "Command+Shift+B"
-      }
+        "default": "Ctrl+Shift+B"
+      },
+      "description": "פתח מארגן סימניות במסך מלא"
+    },
+    "open-organic-garden": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G"
+      },
+      "description": "פתח את הגן הדיגיטלי"
     }
   },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["*.js", "*.css", "*.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 } 

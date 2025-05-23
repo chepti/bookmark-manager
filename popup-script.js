@@ -10,6 +10,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.close();
     });
 
+    // כפתור הגן הדיגיטלי החדש
+    document.getElementById('openGardenBtn').addEventListener('click', () => {
+        console.log('🌳 לחיצה על הגן הדיגיטלי');
+        chrome.tabs.create({ 
+            url: chrome.runtime.getURL('organic-bookmarks.html') 
+        });
+        window.close();
+    });
+
     // כפתור רענון
     document.getElementById('refreshBtn').addEventListener('click', async () => {
         try {
@@ -32,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await chrome.runtime.sendMessage({ action: 'getBookmarkCount' });
         if (response && response.count) {
             document.getElementById('quickStats').textContent = 
-                `יש לך ${response.count} סימניות`;
+                `יש לך ${response.count} סימניות ✨`;
             console.log(`✅ נמצאו ${response.count} סימניות`);
         } else {
             document.getElementById('quickStats').textContent = 
