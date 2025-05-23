@@ -5,547 +5,394 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מארגן הסימניות</title>
     <style>
-        body {
-            width: 800px;
-            height: 600px;
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 600px;
+            height: 500px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #ffffff;
             color: #333;
             overflow: hidden;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.95);
+            background: #f8f9fa;
             padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e9ecef;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 18px;
-            color: #2c3e50;
+            font-size: 16px;
+            color: #495057;
             font-weight: 600;
         }
 
-        .controls {
+        .search-container {
             display: flex;
             gap: 10px;
             align-items: center;
         }
 
+        .search-box {
+            padding: 6px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 13px;
+            width: 180px;
+            background: white;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
         .btn {
-            padding: 8px 15px;
+            padding: 6px 12px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
             font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            transition: all 0.2s ease;
         }
 
-        .btn-primary {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
+        .btn-refresh {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #ced4da;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .btn-secondary:hover {
-            background: white;
-            transform: translateY(-1px);
-        }
-
-        .search-box {
-            padding: 8px 12px;
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius: 8px;
-            font-size: 12px;
-            width: 150px;
-            background: rgba(255, 255, 255, 0.9);
+        .btn-refresh:hover {
+            background: #e9ecef;
+            color: #495057;
         }
 
         .main-container {
             display: flex;
-            height: calc(100% - 70px);
+            height: calc(100% - 60px);
         }
 
         .sidebar {
-            width: 250px;
-            background: rgba(255, 255, 255, 0.95);
-            border-left: 1px solid rgba(0,0,0,0.1);
+            width: 180px;
+            background: #f8f9fa;
+            border-left: 1px solid #e9ecef;
             overflow-y: auto;
-            backdrop-filter: blur(10px);
         }
 
         .content-area {
             flex: 1;
-            padding: 20px;
             overflow-y: auto;
+            background: white;
         }
 
         .folder-tree {
-            padding: 15px;
+            padding: 10px;
+        }
+
+        .folder-tree h3 {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .folder-item {
-            padding: 8px 12px;
-            margin: 2px 0;
-            border-radius: 6px;
+            padding: 8px 10px;
+            margin: 1px 0;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.2s ease;
-            border-right: 3px solid transparent;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .folder-item:hover {
+            background: #e9ecef;
+        }
+
+        .folder-item.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .folder-icon {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .folder-count {
+            margin-right: auto;
+            font-size: 11px;
+            opacity: 0.6;
+        }
+
+        .bookmark-list {
+            padding: 15px;
+        }
+
+        .bookmark-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .bookmark-item:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+        }
+
+        .bookmark-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #212529;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .folder-item:hover {
-            background: rgba(52, 152, 219, 0.1);
-            border-right-color: #3498db;
+        .bookmark-favicon {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
         }
 
-        .folder-item.active {
-            background: rgba(52, 152, 219, 0.2);
-            border-right-color: #2980b9;
-            font-weight: 600;
-        }
-
-        .folder-item .folder-icon {
-            font-size: 14px;
-            opacity: 0.7;
-        }
-
-        .bookmark-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            padding: 10px;
-        }
-
-        .bookmark-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            backdrop-filter: blur(10px);
-        }
-
-        .bookmark-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-
-        .bookmark-card .favicon {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .bookmark-card .title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 5px;
-            color: #2c3e50;
-            line-height: 1.3;
-            max-height: 2.6em;
-            overflow: hidden;
-        }
-
-        .bookmark-card .url {
+        .bookmark-url {
             font-size: 11px;
-            color: #7f8c8d;
-            margin-bottom: 10px;
+            color: #6c757d;
+            margin-bottom: 6px;
             word-break: break-all;
-            line-height: 1.2;
         }
 
-        .bookmark-card .actions {
-            display: flex;
+        .bookmark-path {
+            font-size: 10px;
+            color: #adb5bd;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .bookmark-actions {
+            display: none;
             gap: 5px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
+            margin-top: 6px;
         }
 
-        .bookmark-card:hover .actions {
-            opacity: 1;
+        .bookmark-item:hover .bookmark-actions {
+            display: flex;
         }
 
         .action-btn {
-            padding: 4px 8px;
+            padding: 3px 6px;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             cursor: pointer;
             font-size: 10px;
             transition: all 0.2s ease;
         }
 
         .action-btn.edit {
-            background: #f39c12;
-            color: white;
+            background: #ffc107;
+            color: #212529;
         }
 
         .action-btn.delete {
-            background: #e74c3c;
+            background: #dc3545;
             color: white;
         }
 
-        .action-btn.move {
-            background: #9b59b6;
-            color: white;
-        }
-
-        .preview-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .preview-content {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            width: 80%;
-            height: 80%;
-            position: relative;
+        .empty-state, .error-state, .loading-state {
             display: flex;
             flex-direction: column;
-        }
-
-        .preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-
-        .preview-iframe {
-            flex: 1;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .close-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .share-modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            display: none;
-            z-index: 1001;
-            min-width: 300px;
-        }
-
-        .share-options {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .share-btn {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.2s ease;
-        }
-
-        .share-btn:hover {
-            background: #f8f9fa;
-            border-color: #3498db;
-        }
-
-        .loading {
-            display: flex;
             align-items: center;
             justify-content: center;
             height: 200px;
-            font-size: 14px;
-            color: #7f8c8d;
-        }
-
-        .empty-state {
             text-align: center;
-            padding: 40px 20px;
-            color: #7f8c8d;
-        }
-
-        .empty-state h3 {
-            margin-bottom: 10px;
-            color: #34495e;
-        }
-
-        .message-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #2980b9;
-            background: linear-gradient(135deg, #ecf0f1, #f8f9fa);
-            border-radius: 12px;
-            margin: 20px;
-            border: 2px solid #3498db;
-        }
-
-        .message-state h3 {
-            margin-bottom: 10px;
-            color: #2980b9;
+            color: #6c757d;
         }
 
         .error-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #e74c3c;
-            background: linear-gradient(135deg, #fdf2f2, #ffe6e6);
-            border-radius: 12px;
-            margin: 20px;
-            border: 2px solid #e74c3c;
+            color: #dc3545;
         }
 
-        .error-state h3 {
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #e9ecef;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
             margin-bottom: 10px;
-            color: #c0392b;
         }
 
-        /* Drag and Drop Styles */
-        .draggable {
-            cursor: move;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .dragging {
-            opacity: 0.5;
-            transform: rotate(5deg);
+        .status-message {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
         }
 
-        .drop-zone {
-            border: 2px dashed #3498db;
-            background: rgba(52, 152, 219, 0.1);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            color: #3498db;
-            margin: 10px 0;
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
 
-        /* Responsive */
-        @media (max-width: 600px) {
-            body {
-                width: 100vw;
-                height: 100vh;
-            }
-            
-            .sidebar {
-                width: 200px;
-            }
-            
-            .bookmark-grid {
-                grid-template-columns: 1fr;
-            }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
 
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
-        .bookmark-card {
-            animation: fadeIn 0.3s ease;
-        }
-
-        /* Custom Scrollbar */
+        /* Scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
+            background: #f1f1f1;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 4px;
+            background: #c1c1c1;
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.5);
+            background: #a8a8a8;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🔖 מארגן הסימניות המתקדם</h1>
-        <div class="controls">
-            <input type="text" class="search-box" placeholder="חיפוש סימניות..." id="searchInput">
-            <button class="btn btn-secondary" id="refreshBtn">🔄 רענן</button>
-            <button class="btn btn-secondary" id="exportBtn">📤 ייצוא</button>
-            <button class="btn btn-secondary" id="importBtn">📥 ייבוא</button>
-            <button class="btn btn-primary" id="addFolderBtn">📁 תיקייה חדשה</button>
-            <button class="btn btn-primary" id="shareBtn">🔗 שיתוף</button>
+        <h1>🔖 סימניות</h1>
+        <div class="search-container">
+            <input type="text" class="search-box" placeholder="חיפוש..." id="searchInput">
+            <button class="btn btn-refresh" id="refreshBtn" title="רענן">🔄</button>
         </div>
     </div>
 
     <div class="main-container">
         <div class="content-area">
-            <div id="bookmarksList" class="bookmark-grid">
-                <div class="loading">טוען סימניות...</div>
+            <div id="bookmarksList" class="bookmark-list">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div>טוען סימניות...</div>
+                </div>
             </div>
         </div>
         
         <div class="sidebar">
             <div class="folder-tree">
-                <h3 style="margin-top: 0; color: #2c3e50; font-size: 14px;">📂 תיקיות</h3>
+                <h3>תיקיות</h3>
                 <div id="folderTree">
-                    <div class="loading">טוען תיקיות...</div>
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Preview Modal -->
-    <div class="preview-modal" id="previewModal">
-        <div class="preview-content">
-            <div class="preview-header">
-                <h3 id="previewTitle">תצוגה מקדימה</h3>
-                <button class="close-btn" id="closePreview">×</button>
-            </div>
-            <iframe class="preview-iframe" id="previewFrame"></iframe>
-        </div>
-    </div>
-
-    <!-- Share Modal -->
-    <div class="share-modal" id="shareModal">
-        <h3>שיתוף סימניות</h3>
-        <div class="share-options">
-            <div class="share-btn" data-type="copy">
-                📋 העתק קישורים
-            </div>
-            <div class="share-btn" data-type="email">
-                📧 שלח במייל
-            </div>
-            <div class="share-btn" data-type="export">
-                💾 ייצוא לקובץ
-            </div>
-        </div>
-        <button class="btn btn-secondary" style="margin-top: 15px;" id="closeShare">סגור</button>
-    </div>
-
     <script>
+        console.log('🔖 מארגן הסימניות - הופעל');
+
         class BookmarkManager {
             constructor() {
-                this.currentFolder = null;
                 this.allBookmarks = [];
                 this.filteredBookmarks = [];
-                this.selectedBookmarks = [];
+                this.currentFolder = null;
                 this.init();
             }
 
             async init() {
-                await this.loadBookmarks();
+                console.log('🚀 מאתחל את מארגן הסימניות...');
                 this.setupEventListeners();
-                this.renderFolderTree();
-                this.renderBookmarks();
+                await this.loadBookmarks();
+            }
+
+            setupEventListeners() {
+                console.log('⚙️ מגדיר event listeners...');
+                
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.searchBookmarks(e.target.value);
+                });
+
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    this.refreshBookmarks();
+                });
             }
 
             async loadBookmarks() {
+                console.log('📚 מתחיל לטעון סימניות...');
+                
                 try {
-                    console.log('מתחיל לטעון סימניות...');
-                    
-                    // בדיקה שההרשאות זמינות
-                    if (!chrome.bookmarks) {
-                        throw new Error('ה-API של הסימניות אינו זמין');
+                    // בדיקה שה-API זמין
+                    if (!chrome || !chrome.bookmarks) {
+                        throw new Error('ה-API של סימניות אינו זמין');
                     }
-                    
+                    console.log('✅ API של סימניות זמין');
+
+                    // טעינת עץ הסימניות
                     const bookmarkTree = await chrome.bookmarks.getTree();
-                    console.log('עץ הסימניות שנטען:', bookmarkTree);
-                    
+                    console.log('📁 עץ סימניות נטען:', bookmarkTree);
+
                     if (!bookmarkTree || !bookmarkTree[0]) {
                         throw new Error('לא ניתן לטעון את עץ הסימניות');
                     }
-                    
+
+                    // המרה לרשימה שטוחה
                     this.allBookmarks = this.flattenBookmarks(bookmarkTree[0]);
-                    console.log('סימניות שטוענו:', this.allBookmarks.length);
-                    
                     this.filteredBookmarks = [...this.allBookmarks];
                     
-                    // הצג הודעה אם אין סימניות
-                    if (this.allBookmarks.length === 0) {
-                        console.log('לא נמצאו סימניות בכרום');
-                        this.showMessage('לא נמצאו סימניות בכרום. הוסף סימניות ולחץ על רענן.');
-                    } else {
-                        console.log(`נטענו ${this.allBookmarks.length} סימניות בהצלחה!`);
-                    }
-                } catch (error) {
-                    console.error('שגיאה בטעינת הסימניות:', error);
-                    this.showError('שגיאה בטעינת הסימניות: ' + error.message);
-                }
-            }
+                    console.log(`📋 נטענו ${this.allBookmarks.length} סימניות`);
 
-            async refreshBookmarks() {
-                console.log('מרענן סימניות...');
-                document.getElementById('bookmarksList').innerHTML = '<div class="loading">טוען סימניות...</div>';
-                document.getElementById('folderTree').innerHTML = '<div class="loading">טוען תיקיות...</div>';
-                
-                await this.loadBookmarks();
-                this.renderFolderTree();
-                this.renderBookmarks();
-                
-                this.showSuccess('הסימניות רוענו בהצלחה!');
+                    // עדכון התצוגה
+                    this.renderFolderTree();
+                    this.renderBookmarks();
+
+                    if (this.allBookmarks.length === 0) {
+                        this.showMessage('אין סימניות בכרום. הוסף סימניות ולחץ רענן.', 'info');
+                    } else {
+                        this.showMessage(`נטענו ${this.allBookmarks.length} סימניות בהצלחה!`, 'success');
+                    }
+
+                } catch (error) {
+                    console.error('❌ שגיאה בטעינת סימניות:', error);
+                    this.showError(`שגיאה: ${error.message}`);
+                }
             }
 
             flattenBookmarks(node, path = []) {
@@ -554,13 +401,13 @@
                 if (node.children) {
                     for (const child of node.children) {
                         if (child.url) {
-                            // זוהי סימנייה (לא תיקייה)
+                            // זוהי סימנייה
                             bookmarks.push({
                                 ...child,
                                 path: [...path, node.title].filter(Boolean)
                             });
                         } else {
-                            // זוהי תיקייה - חזור רקורסיבית
+                            // זוהי תיקייה - רקורסיה
                             bookmarks = bookmarks.concat(
                                 this.flattenBookmarks(child, [...path, node.title].filter(Boolean))
                             );
@@ -571,77 +418,10 @@
                 return bookmarks;
             }
 
-            setupEventListeners() {
-                // Search functionality
-                document.getElementById('searchInput').addEventListener('input', (e) => {
-                    this.searchBookmarks(e.target.value);
-                });
-
-                // Refresh functionality
-                document.getElementById('refreshBtn').addEventListener('click', () => {
-                    this.refreshBookmarks();
-                });
-
-                // Folder creation
-                document.getElementById('addFolderBtn').addEventListener('click', () => {
-                    this.createFolder();
-                });
-
-                // Share functionality
-                document.getElementById('shareBtn').addEventListener('click', () => {
-                    this.showShareModal();
-                });
-
-                // Export/Import
-                document.getElementById('exportBtn').addEventListener('click', () => {
-                    this.exportBookmarks();
-                });
-
-                document.getElementById('importBtn').addEventListener('click', () => {
-                    this.importBookmarks();
-                });
-
-                // Preview modal
-                document.getElementById('closePreview').addEventListener('click', () => {
-                    this.closePreview();
-                });
-
-                // Share modal
-                document.getElementById('closeShare').addEventListener('click', () => {
-                    this.closeShareModal();
-                });
-
-                // Share options
-                document.querySelectorAll('.share-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        this.handleShare(e.target.dataset.type);
-                    });
-                });
-
-                // Close modals on background click
-                document.getElementById('previewModal').addEventListener('click', (e) => {
-                    if (e.target.id === 'previewModal') {
-                        this.closePreview();
-                    }
-                });
-            }
-
-            searchBookmarks(query) {
-                if (!query.trim()) {
-                    this.filteredBookmarks = [...this.allBookmarks];
-                } else {
-                    this.filteredBookmarks = this.allBookmarks.filter(bookmark =>
-                        bookmark.title.toLowerCase().includes(query.toLowerCase()) ||
-                        bookmark.url.toLowerCase().includes(query.toLowerCase())
-                    );
-                }
-                this.renderBookmarks();
-            }
-
             renderFolderTree() {
                 const folderTree = document.getElementById('folderTree');
                 
-                // Get unique folders
+                // יצירת רשימת תיקיות ייחודיות
                 const folders = new Set();
                 this.allBookmarks.forEach(bookmark => {
                     bookmark.path.forEach((folder, index) => {
@@ -655,20 +435,22 @@
                 folderTree.innerHTML = `
                     <div class="folder-item active" data-folder="all">
                         <span class="folder-icon">🌐</span>
-                        כל הסימניות (${this.allBookmarks.length})
+                        כל הסימניות
+                        <span class="folder-count">${this.allBookmarks.length}</span>
                     </div>
-                    ${sortedFolders.map(folder => `
-                        <div class="folder-item" data-folder="${folder}">
-                            <span class="folder-icon">📁</span>
-                            ${folder.split('/').pop()} 
-                            <span style="opacity: 0.6; font-size: 11px;">
-                                (${this.allBookmarks.filter(b => b.path.join('/') === folder).length})
-                            </span>
-                        </div>
-                    `).join('')}
+                    ${sortedFolders.map(folder => {
+                        const count = this.allBookmarks.filter(b => b.path.join('/') === folder).length;
+                        return `
+                            <div class="folder-item" data-folder="${folder}">
+                                <span class="folder-icon">📁</span>
+                                ${folder.split('/').pop()}
+                                <span class="folder-count">${count}</span>
+                            </div>
+                        `;
+                    }).join('')}
                 `;
 
-                // Add folder click listeners
+                // הוספת event listeners לתיקיות
                 folderTree.querySelectorAll('.folder-item').forEach(item => {
                     item.addEventListener('click', () => {
                         this.selectFolder(item.dataset.folder);
@@ -679,6 +461,8 @@
             }
 
             selectFolder(folderPath) {
+                console.log(`📂 נבחרה תיקייה: ${folderPath}`);
+                
                 if (folderPath === 'all') {
                     this.filteredBookmarks = [...this.allBookmarks];
                 } else {
@@ -695,24 +479,24 @@
                 if (this.filteredBookmarks.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
-                            <h3>אין סימניות להצגה</h3>
-                            <p>נסה לחפש משהו אחר או בחר תיקייה אחרת</p>
+                            <div>📭</div>
+                            <div>אין סימניות להצגה</div>
                         </div>
                     `;
                     return;
                 }
 
                 container.innerHTML = this.filteredBookmarks.map(bookmark => `
-                    <div class="bookmark-card draggable" data-id="${bookmark.id}" data-url="${bookmark.url}">
-                        <div class="favicon">
-                            <img src="chrome://favicon/${bookmark.url}" width="16" height="16" 
-                                 onerror="this.style.display='none';this.parentNode.innerHTML='🔗'">
+                    <div class="bookmark-item" data-id="${bookmark.id}" data-url="${bookmark.url}">
+                        <div class="bookmark-title">
+                            <img class="bookmark-favicon" src="chrome://favicon/${bookmark.url}" 
+                                 onerror="this.style.display='none'">
+                            ${bookmark.title || 'ללא כותרת'}
                         </div>
-                        <div class="title">${bookmark.title || 'ללא כותרת'}</div>
-                        <div class="url">${new URL(bookmark.url).hostname}</div>
-                        <div class="actions">
+                        <div class="bookmark-url">${this.shortenUrl(bookmark.url)}</div>
+                        ${bookmark.path.length > 0 ? `<div class="bookmark-path">${bookmark.path.join(' > ')}</div>` : ''}
+                        <div class="bookmark-actions">
                             <button class="action-btn edit" title="עריכה">✏️</button>
-                            <button class="action-btn move" title="העברה">📁</button>
                             <button class="action-btn delete" title="מחיקה">🗑️</button>
                         </div>
                     </div>
@@ -722,268 +506,138 @@
             }
 
             setupBookmarkListeners() {
-                document.querySelectorAll('.bookmark-card').forEach(card => {
-                    // Click to preview
-                    card.addEventListener('click', (e) => {
+                document.querySelectorAll('.bookmark-item').forEach(item => {
+                    // קליק לפתיחה
+                    item.addEventListener('click', (e) => {
                         if (!e.target.classList.contains('action-btn')) {
-                            this.previewBookmark(card.dataset.url, card.querySelector('.title').textContent);
+                            window.open(item.dataset.url, '_blank');
                         }
                     });
 
-                    // Action buttons
-                    const editBtn = card.querySelector('.edit');
-                    const moveBtn = card.querySelector('.move');
-                    const deleteBtn = card.querySelector('.delete');
+                    // כפתורי פעולה
+                    const editBtn = item.querySelector('.edit');
+                    const deleteBtn = item.querySelector('.delete');
 
-                    editBtn.addEventListener('click', (e) => {
+                    editBtn?.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        this.editBookmark(card.dataset.id);
+                        this.editBookmark(item.dataset.id);
                     });
 
-                    moveBtn.addEventListener('click', (e) => {
+                    deleteBtn?.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        this.moveBookmark(card.dataset.id);
-                    });
-
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.deleteBookmark(card.dataset.id);
-                    });
-
-                    // Drag and drop
-                    card.draggable = true;
-                    card.addEventListener('dragstart', (e) => {
-                        card.classList.add('dragging');
-                        e.dataTransfer.setData('text/plain', card.dataset.id);
-                    });
-
-                    card.addEventListener('dragend', () => {
-                        card.classList.remove('dragging');
+                        this.deleteBookmark(item.dataset.id);
                     });
                 });
             }
 
-            previewBookmark(url, title) {
-                const modal = document.getElementById('previewModal');
-                const frame = document.getElementById('previewFrame');
-                const titleEl = document.getElementById('previewTitle');
+            searchBookmarks(query) {
+                console.log(`🔍 חיפוש: "${query}"`);
                 
-                titleEl.textContent = title;
-                frame.src = url;
-                modal.style.display = 'flex';
+                if (!query.trim()) {
+                    this.filteredBookmarks = [...this.allBookmarks];
+                } else {
+                    this.filteredBookmarks = this.allBookmarks.filter(bookmark =>
+                        bookmark.title.toLowerCase().includes(query.toLowerCase()) ||
+                        bookmark.url.toLowerCase().includes(query.toLowerCase())
+                    );
+                }
+                this.renderBookmarks();
             }
 
-            closePreview() {
-                const modal = document.getElementById('previewModal');
-                const frame = document.getElementById('previewFrame');
+            async refreshBookmarks() {
+                console.log('🔄 מרענן סימניות...');
                 
-                modal.style.display = 'none';
-                frame.src = '';
+                document.getElementById('bookmarksList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div>טוען סימניות...</div>
+                    </div>
+                `;
+                
+                await this.loadBookmarks();
             }
 
             async editBookmark(id) {
-                const newTitle = prompt('כותרת חדשה:');
-                if (newTitle) {
+                const bookmark = this.allBookmarks.find(b => b.id === id);
+                if (!bookmark) return;
+
+                const newTitle = prompt('כותרת חדשה:', bookmark.title);
+                if (newTitle && newTitle !== bookmark.title) {
                     try {
                         await chrome.bookmarks.update(id, { title: newTitle });
-                        await this.loadBookmarks();
-                        this.renderBookmarks();
-                        this.showSuccess('הסימנייה עודכנה בהצלחה');
+                        this.showMessage('הסימנייה עודכנה בהצלחה', 'success');
+                        await this.refreshBookmarks();
                     } catch (error) {
-                        this.showError('שגיאה בעדכון הסימנייה');
+                        console.error('❌ שגיאה בעדכון:', error);
+                        this.showMessage('שגיאה בעדכון הסימנייה', 'error');
                     }
-                }
-            }
-
-            async moveBookmark(id) {
-                // Get available folders
-                const folders = new Set();
-                this.allBookmarks.forEach(bookmark => {
-                    bookmark.path.forEach((folder, index) => {
-                        folders.add(bookmark.path.slice(0, index + 1).join('/'));
-                    });
-                });
-
-                const folderList = Array.from(folders).map((folder, index) => 
-                    `${index + 1}. ${folder}`
-                ).join('\n');
-
-                const choice = prompt(`בחר תיקייה (הכנס מספר):\n${folderList}`);
-                if (choice) {
-                    // This would need actual folder ID resolution
-                    this.showInfo('פונקציית העברה תהיה זמינה בקרוב');
                 }
             }
 
             async deleteBookmark(id) {
-                if (confirm('האם אתה בטוח שברצונך למחוק סימנייה זו?')) {
+                const bookmark = this.allBookmarks.find(b => b.id === id);
+                if (!bookmark) return;
+
+                if (confirm(`האם למחוק את "${bookmark.title}"?`)) {
                     try {
                         await chrome.bookmarks.remove(id);
-                        await this.loadBookmarks();
-                        this.renderBookmarks();
-                        this.renderFolderTree();
-                        this.showSuccess('הסימנייה נמחקה בהצלחה');
+                        this.showMessage('הסימנייה נמחקה', 'success');
+                        await this.refreshBookmarks();
                     } catch (error) {
-                        this.showError('שגיאה במחיקת הסימנייה');
+                        console.error('❌ שגיאה במחיקה:', error);
+                        this.showMessage('שגיאה במחיקת הסימנייה', 'error');
                     }
                 }
             }
 
-            async createFolder() {
-                const folderName = prompt('שם התיקייה החדשה:');
-                if (folderName) {
-                    try {
-                        await chrome.bookmarks.create({
-                            parentId: '1',
-                            title: folderName
-                        });
-                        await this.loadBookmarks();
-                        this.renderFolderTree();
-                        this.showSuccess('התיקייה נוצרה בהצלחה');
-                    } catch (error) {
-                        this.showError('שגיאה ביצירת התיקייה');
-                    }
+            shortenUrl(url) {
+                try {
+                    const urlObj = new URL(url);
+                    return urlObj.hostname;
+                } catch {
+                    return url.length > 40 ? url.substring(0, 40) + '...' : url;
                 }
             }
 
-            showShareModal() {
-                document.getElementById('shareModal').style.display = 'block';
-            }
-
-            closeShareModal() {
-                document.getElementById('shareModal').style.display = 'none';
-            }
-
-            handleShare(type) {
-                switch (type) {
-                    case 'copy':
-                        this.copyBookmarksToClipboard();
-                        break;
-                    case 'email':
-                        this.shareViaEmail();
-                        break;
-                    case 'export':
-                        this.exportBookmarks();
-                        break;
-                }
-                this.closeShareModal();
-            }
-
-            copyBookmarksToClipboard() {
-                const urls = this.filteredBookmarks.map(b => `${b.title}: ${b.url}`).join('\n');
-                navigator.clipboard.writeText(urls).then(() => {
-                    this.showSuccess('הקישורים הועתקו ללוח');
-                });
-            }
-
-            shareViaEmail() {
-                const urls = this.filteredBookmarks.map(b => `${b.title}: ${b.url}`).join('\n');
-                const subject = 'סימניות משותפות';
-                const body = encodeURIComponent(`הנה הסימניות שרציתי לשתף:\n\n${urls}`);
-                window.open(`mailto:?subject=${subject}&body=${body}`);
-            }
-
-            exportBookmarks() {
-                const data = JSON.stringify(this.filteredBookmarks, null, 2);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `bookmarks-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                this.showSuccess('הסימניות יוצאו בהצלחה');
-            }
-
-            importBookmarks() {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const text = await file.text();
-                        try {
-                            const bookmarks = JSON.parse(text);
-                            // Import logic would go here
-                            this.showInfo('ייבוא הסימניות יהיה זמין בקרוב');
-                        } catch (error) {
-                            this.showError('שגיאה בקריאת הקובץ');
-                        }
-                    }
-                };
-                input.click();
-            }
-
-            showSuccess(message) {
-                this.showNotification(message, 'success');
-            }
-
-            showError(message) {
-                this.showNotification(message, 'error');
-            }
-
-            showInfo(message) {
-                this.showNotification(message, 'info');
-            }
-
-            showNotification(message, type) {
-                const notification = document.createElement('div');
-                notification.textContent = message;
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    color: white;
-                    font-weight: 500;
-                    z-index: 10000;
-                    animation: slideIn 0.3s ease;
-                    background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
-                `;
+            showMessage(message, type = 'info') {
+                console.log(`📢 הודעה: ${message}`);
                 
-                document.body.appendChild(notification);
+                const statusEl = document.createElement('div');
+                statusEl.className = `status-message status-${type === 'success' ? 'success' : 'error'}`;
+                statusEl.textContent = message;
+                
+                document.body.appendChild(statusEl);
                 
                 setTimeout(() => {
-                    notification.style.animation = 'slideOut 0.3s ease';
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 300);
+                    if (statusEl.parentNode) {
+                        statusEl.parentNode.removeChild(statusEl);
+                    }
                 }, 3000);
             }
 
-            showMessage(message) {
-                const container = document.getElementById('bookmarksList');
-                container.innerHTML = `
-                    <div class="message-state">
-                        <h3>💡 הודעה</h3>
-                        <p>${message}</p>
-                        <button class="btn btn-primary" onclick="location.reload()">רענן</button>
+            showError(message) {
+                console.error(`❌ שגיאה: ${message}`);
+                
+                document.getElementById('bookmarksList').innerHTML = `
+                    <div class="error-state">
+                        <div>❌</div>
+                        <div>${message}</div>
+                        <button class="btn btn-refresh" onclick="location.reload()">נסה שוב</button>
                     </div>
                 `;
             }
         }
 
-        // Initialize the bookmark manager when the popup loads
+        // הפעלה כאשר הדף נטען
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🎯 DOM נטען - מתחיל את מארגן הסימניות');
             new BookmarkManager();
         });
 
-        // Add CSS animations for notifications
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
+        // טיפול בשגיאות לא צפויות
+        window.addEventListener('error', (e) => {
+            console.error('❌ שגיאה לא צפויה:', e.error);
+        });
     </script>
 </body>
 </html>
