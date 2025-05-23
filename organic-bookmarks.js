@@ -6,7 +6,10 @@ class OrganicBookmarkGarden {
         this.height = window.innerHeight;
         this.searchTerm = '';
         this.expandedNodes = new Set();
-        this.savedPositions = new Map(); // שמירת מיקומים קבועים
+        this.savedPositions = new Map();
+        this.currentZoomLevel = 1; // רמת זום נוכחית
+        this.maxNodesPerLevel = 50; // מקסימום נודים לרמה
+        this.clusterThreshold = 30; // מרחק לקיבוץ
         
         // ניסיון לטעון סימניות אמיתיות מכרום
         this.loadChromeBookmarks().then(() => {
@@ -25,6 +28,10 @@ class OrganicBookmarkGarden {
                 const bookmarkTree = await chrome.bookmarks.getTree();
                 this.bookmarksData = this.convertChromeBookmarks(bookmarkTree[0]);
                 console.log('✅ סימניות נטענו מכרום!', this.bookmarksData);
+                
+                // סטטיסטיקות
+                const stats = this.calculateStats(this.bookmarksData);
+                console.log(`📊 סה"כ ${stats.totalBookmarks} סימניות ב-${stats.totalFolders} תיקיות`);
             } else {
                 console.log('⚠️ לא זוהה Chrome API, משתמש בנתוני דמו');
                 this.bookmarksData = this.generateDemoData();
@@ -35,14 +42,32 @@ class OrganicBookmarkGarden {
         }
     }
 
+    calculateStats(data) {
+        let totalBookmarks = 0;
+        let totalFolders = 0;
+        
+        const count = (node) => {
+            if (node.url) {
+                totalBookmarks++;
+            } else if (node.children) {
+                totalFolders++;
+                node.children.forEach(count);
+            }
+        };
+        
+        count(data);
+        return { totalBookmarks, totalFolders };
+    }
+
     convertChromeBookmarks(bookmarkNode) {
         console.log('🔄 ממיר סימניות כרום לפורמט הגן...');
         
-        const convertNode = (node) => {
+        const convertNode = (node, depth = 0) => {
             const converted = {
                 name: node.title || 'ללא שם',
                 url: node.url,
                 id: node.id,
+                depth: depth,
                 favicon: this.getFaviconForUrl(node.url)
             };
 
@@ -53,9 +78,23 @@ class OrganicBookmarkGarden {
             }
 
             if (node.children && node.children.length > 0) {
+                // מגביל רק לרמות עליונות אם יש יותר מדי פריטים
+                const shouldLimitChildren = depth < 2 && node.children.length > this.maxNodesPerLevel;
+                
                 converted.children = node.children
-                    .filter(child => child.title) // רק עם שמות
-                    .map(convertNode);
+                    .filter(child => child.title)
+                    .slice(0, shouldLimitChildren ? this.maxNodesPerLevel : undefined)
+                    .map(child => convertNode(child, depth + 1));
+                
+                if (shouldLimitChildren && node.children.length > this.maxNodesPerLevel) {
+                    // הוספת נוד "עוד..." 
+                    converted.children.push({
+                        name: `עוד ${node.children.length - this.maxNodesPerLevel} פריטים...`,
+                        isMore: true,
+                        remainingItems: node.children.slice(this.maxNodesPerLevel),
+                        favicon: '➕'
+                    });
+                }
             }
 
             return converted;
@@ -84,7 +123,11 @@ class OrganicBookmarkGarden {
             'reddit.com': '🤖',
             'netflix.com': '🎬',
             'amazon.com': '📦',
-            'wikipedia.org': '📖'
+            'wikipedia.org': '📖',
+            'medium.com': '✍️',
+            'dribbble.com': '🏀',
+            'behance.net': '🎨',
+            'unsplash.com': '📸'
         };
         
         return favicons[domain] || '🔗';
@@ -109,6 +152,9 @@ class OrganicBookmarkGarden {
         if (domain.includes('google') || domain.includes('notion') || domain.includes('slack')) {
             tags.push('work', 'tool');
         }
+        if (domain.includes('dribbble') || domain.includes('behance') || domain.includes('unsplash')) {
+            tags.push('free');
+        }
         
         return tags.length > 0 ? tags : ['general'];
     }
@@ -122,7 +168,10 @@ class OrganicBookmarkGarden {
             'stackoverflow.com': 'פתרונות לבעיות תכנות',
             'youtube.com': 'סרטונים ולמידה',
             'google.com': 'חיפוש ושירותים',
-            'figma.com': 'עיצוב ופרוטוטיפים'
+            'figma.com': 'עיצוב ופרוטוטיפים',
+            'medium.com': 'כתבות ובלוגים',
+            'dribbble.com': 'השראה לעיצוב',
+            'behance.net': 'פורטפוליו עיצוב'
         };
         
         return descriptions[domain] || `אתר ${domain}`;
@@ -153,26 +202,6 @@ class OrganicBookmarkGarden {
                         { name: "Adobe Color", url: "https://color.adobe.com", description: "פלטות צבעים", tags: ['tool', 'free'], favicon: "🌈" },
                         { name: "Unsplash", url: "https://unsplash.com", description: "תמונות חינמיות", tags: ['free'], favicon: "📸" }
                     ]
-                },
-                {
-                    name: "כלים",
-                    tags: ['tool'],
-                    children: [
-                        { name: "Google Analytics", url: "https://analytics.google.com", description: "ניתוח תנועה", tags: ['tool', 'free'], favicon: "📊" },
-                        { name: "Notion", url: "https://notion.so", description: "ארגון מחשבות", tags: ['tool'], favicon: "📝" },
-                        { name: "Slack", url: "https://slack.com", description: "תקשורת צוות", tags: ['work', 'tool'], favicon: "💬" },
-                        { name: "Zoom", url: "https://zoom.us", description: "וידאו קונפרנס", tags: ['work', 'tool'], favicon: "📹" }
-                    ]
-                },
-                {
-                    name: "למידה",
-                    tags: ['learning'],
-                    children: [
-                        { name: "Coursera", url: "https://coursera.org", description: "קורסים אקדמיים", tags: ['learning'], favicon: "🎓" },
-                        { name: "YouTube", url: "https://youtube.com", description: "סרטוני הדרכה", tags: ['learning', 'free'], favicon: "📺" },
-                        { name: "Khan Academy", url: "https://khanacademy.org", description: "חינוך חינמי", tags: ['learning', 'free'], favicon: "🧮" },
-                        { name: "Duolingo", url: "https://duolingo.com", description: "לימוד שפות", tags: ['learning', 'free'], favicon: "🗣️" }
-                    ]
                 }
             ]
         };
@@ -192,15 +221,64 @@ class OrganicBookmarkGarden {
         this.centerX = this.width / 2;
         this.centerY = this.height / 2;
 
-        // הוספת zoom וpan
+        // הוספת zoom וpan עם רמות פירוט
         this.zoom = d3.zoom()
-            .scaleExtent([0.1, 3])
+            .scaleExtent([0.1, 10])
             .on('zoom', (event) => {
-                this.linksGroup.attr('transform', event.transform);
-                this.nodesGroup.attr('transform', event.transform);
+                const { transform } = event;
+                this.linksGroup.attr('transform', transform);
+                this.nodesGroup.attr('transform', transform);
+                
+                // עדכון רמת זום ופירוט
+                this.updateDetailLevel(transform.k);
             });
 
         this.svg.call(this.zoom);
+    }
+
+    updateDetailLevel(zoomScale) {
+        const newLevel = this.getDetailLevel(zoomScale);
+        
+        if (newLevel !== this.currentZoomLevel) {
+            this.currentZoomLevel = newLevel;
+            console.log(`🔍 עדכון רמת פירוט: ${newLevel}`);
+            this.updateNodeVisibility();
+        }
+    }
+
+    getDetailLevel(zoomScale) {
+        if (zoomScale < 0.5) return 1; // רק תיקיות עיקריות
+        if (zoomScale < 1.5) return 2; // תת-תיקיות
+        if (zoomScale < 3) return 3;   // סימניות בקבוצות
+        return 4; // כל הסימניות
+    }
+
+    updateNodeVisibility() {
+        if (!this.nodes) return;
+        
+        this.nodes.style('opacity', d => {
+            const shouldShow = this.shouldShowNode(d);
+            return shouldShow ? 1 : 0.1;
+        });
+
+        this.links.style('opacity', d => {
+            const shouldShowSource = this.shouldShowNode(d.source);
+            const shouldShowTarget = this.shouldShowNode(d.target);
+            return (shouldShowSource && shouldShowTarget) ? 0.7 : 0.1;
+        });
+    }
+
+    shouldShowNode(node) {
+        const level = this.currentZoomLevel;
+        const depth = node.depth;
+        
+        switch (level) {
+            case 1: return depth <= 1; // רק שורש ותיקיות עיקריות
+            case 2: return depth <= 2; // עד תת-תיקיות
+            case 3: return depth <= 3 || !node.data.url; // עד רמה 3 או תיקיות
+            case 4: return true; // הכל
+            default: return true;
+        }
     }
 
     setupEventListeners() {
@@ -220,6 +298,15 @@ class OrganicBookmarkGarden {
 
         // גודל חלון
         window.addEventListener('resize', () => this.handleResize());
+        
+        // מקשי קיצור
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                this.searchTerm = '';
+                this.highlightSearch();
+            }
+        });
     }
 
     createTree() {
@@ -251,12 +338,16 @@ class OrganicBookmarkGarden {
 
         Object.keys(levels).forEach(depth => {
             const levelNodes = levels[depth];
-            const radius = depth * 150; // מרחק מהמרכז
+            const radius = Math.min(depth * 120, this.width * 0.4); // מגביל רדיוס
             
             levelNodes.forEach((node, index) => {
                 if (depth == 0) return; // שורש כבר במרכז
                 
-                const angle = (index / levelNodes.length) * 2 * Math.PI;
+                // יצירת זווית עם קצת אקראיות לטבעיות
+                const baseAngle = (index / levelNodes.length) * 2 * Math.PI;
+                const randomOffset = (Math.random() - 0.5) * 0.5; // אקראיות קלה
+                const angle = baseAngle + randomOffset;
+                
                 const nodeKey = `${node.data.name}_${depth}`;
                 
                 // בדיקה אם יש מיקום שמור
@@ -336,10 +427,10 @@ class OrganicBookmarkGarden {
             .attr('transform', d => `translate(${d.x},${d.y}) scale(0)`)
             .style('opacity', 0);
 
-        // עיגול רקע
+        // עיגול רקע עם גודל דינמי
         nodeEnter.append('circle')
             .attr('class', 'bookmark-circle')
-            .attr('r', d => d.depth === 0 ? 35 : (d.children ? 25 : 20))
+            .attr('r', d => this.getNodeRadius(d))
             .attr('fill', d => this.getNodeColor(d))
             .attr('stroke', '#fff')
             .attr('stroke-width', 2);
@@ -349,21 +440,31 @@ class OrganicBookmarkGarden {
             .attr('class', 'bookmark-icon')
             .attr('text-anchor', 'middle')
             .attr('dy', '0.35em')
-            .attr('font-size', d => d.depth === 0 ? '20px' : '16px')
+            .attr('font-size', d => this.getIconSize(d))
             .text(d => d.data.favicon || (d.children ? '📁' : '🔗'));
 
-        // תווית
+        // תווית עם גודל דינמי
         nodeEnter.append('text')
             .attr('class', 'bookmark-text')
             .attr('text-anchor', 'middle')
-            .attr('dy', d => d.depth === 0 ? '45px' : '35px')
+            .attr('dy', d => this.getNodeRadius(d) + 15)
             .attr('font-size', '10px')
-            .text(d => d.data.name);
+            .text(d => this.getDisplayName(d));
+
+        // מספר פריטים לקלסטרים
+        nodeEnter.append('text')
+            .attr('class', 'cluster-count')
+            .attr('text-anchor', 'middle')
+            .attr('dy', '-0.5em')
+            .attr('font-size', '8px')
+            .attr('fill', '#fff')
+            .style('opacity', d => this.shouldShowClusterCount(d) ? 1 : 0)
+            .text(d => this.getClusterCount(d));
 
         // אנימציית כניסה
         nodeEnter.transition()
             .duration(800)
-            .delay((d, i) => i * 30)
+            .delay((d, i) => Math.min(i * 10, 500)) // מגביל עיכוב
             .style('opacity', 1)
             .attr('transform', d => `translate(${d.x},${d.y}) scale(1)`);
 
@@ -381,6 +482,51 @@ class OrganicBookmarkGarden {
             .on('mouseout', () => this.hideTooltip())
             .on('click', (event, d) => this.handleNodeClick(d))
             .call(this.setupDragBehavior());
+
+        // עדכון רמת פירוט
+        this.updateNodeVisibility();
+    }
+
+    getNodeRadius(d) {
+        if (d.depth === 0) return 40; // שורש
+        if (d.data.isMore) return 15; // נוד "עוד..."
+        if (d.children) return Math.min(30, 15 + d.children.length); // תיקיות לפי כמות תוכן
+        return 12; // סימניות רגילות
+    }
+
+    getIconSize(d) {
+        const radius = this.getNodeRadius(d);
+        return Math.max(12, radius * 0.8) + 'px';
+    }
+
+    getDisplayName(d) {
+        const name = d.data.name;
+        const maxLength = this.getNodeRadius(d) > 20 ? 15 : 10;
+        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+    }
+
+    shouldShowClusterCount(d) {
+        return d.children && d.children.length > 1;
+    }
+
+    getClusterCount(d) {
+        if (!d.children) return '';
+        return d.children.length > 99 ? '99+' : d.children.length.toString();
+    }
+
+    getNodeColor(d) {
+        if (d.depth === 0) return '#4fc3f7'; // שורש
+        if (d.data.isMore) return '#ff6b35'; // נוד "עוד..."
+        if (d.children) return '#81c784'; // תיקיות
+        
+        // צבע לפי תגיות
+        const tags = d.data.tags || [];
+        if (tags.includes('free')) return '#4caf50';
+        if (tags.includes('tool')) return '#2196f3';
+        if (tags.includes('learning')) return '#ff9800';
+        if (tags.includes('work')) return '#9c27b0';
+        
+        return '#90a4ae'; // ברירת מחדל
     }
 
     setupDragBehavior() {
@@ -408,27 +554,22 @@ class OrganicBookmarkGarden {
             });
     }
 
-    getNodeColor(d) {
-        if (d.depth === 0) return '#4fc3f7'; // שורש
-        if (d.children) return '#81c784'; // תיקיות
-        
-        // צבע לפי תגיות
-        const tags = d.data.tags || [];
-        if (tags.includes('free')) return '#4caf50';
-        if (tags.includes('tool')) return '#2196f3';
-        if (tags.includes('learning')) return '#ff9800';
-        if (tags.includes('work')) return '#9c27b0';
-        
-        return '#90a4ae'; // ברירת מחדל
-    }
-
     showTooltip(event, d) {
         const tooltip = document.getElementById('tooltip');
         const data = d.data;
         
         document.getElementById('tooltipTitle').textContent = data.name;
         document.getElementById('tooltipUrl').textContent = data.url || '';
-        document.getElementById('tooltipDescription').textContent = data.description || '';
+        
+        // תיאור מתקדם
+        let description = data.description || '';
+        if (d.children) {
+            description += ` (${d.children.length} פריטים)`;
+        }
+        if (data.isMore && data.remainingItems) {
+            description = `${data.remainingItems.length} פריטים נוספים`;
+        }
+        document.getElementById('tooltipDescription').textContent = description;
         
         // תגיות
         const tagsContainer = document.getElementById('tooltipTags');
@@ -468,10 +609,21 @@ class OrganicBookmarkGarden {
         if (d.data.url) {
             // פתיחת קישור
             window.open(d.data.url, '_blank');
+        } else if (d.data.isMore) {
+            // הרחבת נוד "עוד..."
+            this.expandMoreNode(d);
         } else if (d.children || d._children) {
             // הרחבה/כיווץ של ענף
             this.toggleNode(d);
         }
+    }
+
+    expandMoreNode(d) {
+        console.log('➕ מרחיב נוד "עוד..."');
+        // כאן אפשר להוסיף פונקציונליות להרחבת פריטים נוספים
+        // לעת עתה פשוט נעלם את הנוד
+        d.data.isMore = false;
+        this.updateVisualization();
     }
 
     toggleNode(d) {
@@ -551,7 +703,8 @@ class OrganicBookmarkGarden {
         console.log('📤 מייצא מבנה...');
         const exportData = {
             bookmarks: this.bookmarksData,
-            positions: Object.fromEntries(this.savedPositions)
+            positions: Object.fromEntries(this.savedPositions),
+            stats: this.calculateStats(this.bookmarksData)
         };
         
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -566,8 +719,9 @@ class OrganicBookmarkGarden {
     }
 
     updateStats(nodes) {
+        const visibleNodes = nodes.filter(d => this.shouldShowNode(d));
         document.getElementById('totalNodes').textContent = nodes.length;
-        document.getElementById('visibleNodes').textContent = nodes.filter(d => d.depth > 0).length;
+        document.getElementById('visibleNodes').textContent = visibleNodes.length;
         document.getElementById('expandedBranches').textContent = this.expandedNodes.size;
     }
 
