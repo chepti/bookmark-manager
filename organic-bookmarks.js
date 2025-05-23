@@ -12,6 +12,8 @@ class OrganicBookmarkGarden {
         this.clusterThreshold = 30; // מרחק לקיבוץ
         this.maxNodeRadius = 50; // גודל מקסימלי לעיגול
         this.branchLength = 80; // אורך ענף מהתיקיה
+        this.focusedNode = null; // הנוד שהוא במוקד
+        this.focusLevel = 0; // רמת מיקוד (0 = כללי, 1+ = ממוקד)
         
         // ניסיון לטעון סימניות אמיתיות מכרום
         this.loadChromeBookmarks().then(() => {
@@ -235,147 +237,191 @@ class OrganicBookmarkGarden {
         this.centerX = this.width / 2;
         this.centerY = this.height / 2;
 
-        // הוספת zoom וpan עם רמות פירוט
+        // הוספת zoom וpan עם מערכת Focus חכמה
         this.zoom = d3.zoom()
-            .scaleExtent([0.1, 10])
+            .scaleExtent([0.3, 5])
             .on('zoom', (event) => {
                 const { transform } = event;
                 this.linksGroup.attr('transform', transform);
                 this.nodesGroup.attr('transform', transform);
                 
-                // עדכון רמת זום ופירוט
-                this.updateDetailLevel(transform.k);
+                // במקום זום רגיל - מערכת Focus חכמה
+                this.handleSmartFocus(transform);
             });
 
         this.svg.call(this.zoom);
+        
+        // האזנה ללחיצות כפולות למיקוד
+        this.svg.on('dblclick.zoom', null); // מבטל זום כפול רגיל
     }
 
-    updateDetailLevel(zoomScale) {
-        const newLevel = this.getDetailLevel(zoomScale);
+    handleSmartFocus(transform) {
+        // חישוב איזה נוד הכי קרוב למרכז המסך
+        const screenCenterX = this.width / 2;
+        const screenCenterY = this.height / 2;
         
-        if (newLevel !== this.currentZoomLevel) {
-            this.currentZoomLevel = newLevel;
-            console.log(`🔍 עדכון רמת פירוט: ${newLevel}`);
-            this.updateNodeVisibility();
-            this.updateFaviconDisplay(zoomScale);
-            this.updateSizesForZoom(zoomScale);
+        // המרה למערכת הקואורדינטות של ה-SVG
+        const svgPoint = transform.invert([screenCenterX, screenCenterY]);
+        
+        // מציאת הנוד הקרוב ביותר למרכז
+        const focusCandidate = this.findClosestFolder(svgPoint[0], svgPoint[1]);
+        
+        // עדכון מיקוד אם זה נוד חדש ובמרחק סביר
+        if (focusCandidate && focusCandidate !== this.focusedNode) {
+            const distance = Math.sqrt(
+                Math.pow(focusCandidate.x - svgPoint[0], 2) + 
+                Math.pow(focusCandidate.y - svgPoint[1], 2)
+            );
+            
+            // רק אם קרוב מספיק ויש לו ילדים
+            if (distance < 100 && focusCandidate.children && transform.k > 1.2) {
+                this.setFocus(focusCandidate);
+            } else if (transform.k < 1.0) {
+                this.clearFocus();
+            }
         }
     }
 
-    getDetailLevel(zoomScale) {
-        if (zoomScale < 0.5) return 1; // רק תיקיות עיקריות
-        if (zoomScale < 1.5) return 2; // תת-תיקיות
-        if (zoomScale < 3) return 3;   // סימניות בקבוצות
-        return 4; // כל הסימניות
-    }
-
-    updateNodeVisibility() {
-        if (!this.nodes) return;
+    findClosestFolder(x, y) {
+        if (!this.root) return null;
         
-        this.nodes.style('opacity', d => {
-            const shouldShow = this.shouldShowNode(d);
-            return shouldShow ? 1 : 0.1;
-        });
-
-        this.links.style('opacity', d => {
-            const shouldShowSource = this.shouldShowNode(d.source);
-            const shouldShowTarget = this.shouldShowNode(d.target);
-            return (shouldShowSource && shouldShowTarget) ? 0.7 : 0.1;
-        });
-    }
-
-    updateSizesForZoom(zoomScale) {
-        if (!this.nodes) return;
+        let closest = null;
+        let minDistance = Infinity;
         
-        // חישוב גדלים הפוכים לזום כדי לשמור על גודל קבוע
-        const iconScale = Math.max(0.3, Math.min(1.2, 1 / Math.sqrt(zoomScale)));
-        const textScale = Math.max(0.4, Math.min(1, 0.8 / Math.sqrt(zoomScale)));
-        
-        // בקרה על תצוגת טקסטים לפי זום
-        const showLabels = zoomScale > 0.8; // מציג טקסטים רק לנודים חשובים או בזום גבוה
-        const showCounts = zoomScale > 0.6; // מציג מונים בזום נמוך יותר
-        
-        // עדכון גדלי אייקונים
-        this.nodes.selectAll('.bookmark-icon')
-            .attr('font-size', d => {
-                const baseSize = this.getIconSize(d, false); // ללא יחידות
-                return (parseFloat(baseSize) * iconScale) + 'px';
-            });
-        
-        // עדכון תצוגת טקסטים
-        this.nodes.selectAll('.bookmark-text')
-            .attr('font-size', (8 + textScale * 4) + 'px')
-            .style('opacity', d => {
-                // הצגת טקסטים רק לנודים חשובים או בזום גבוה
-                if (!showLabels) return 0;
-                if (d.depth === 0) return 1; // שורש תמיד
-                if (d.children && d.children.length > 3) return 1; // תיקיות גדולות
-                return showLabels && zoomScale > 1.2 ? 1 : 0; // אחרים רק בזום גבוה
-            });
-        
-        this.nodes.selectAll('.cluster-count')
-            .attr('font-size', (6 + textScale * 2) + 'px')
-            .style('opacity', showCounts ? 1 : 0);
-        
-        // עדכון גדלי פביקונים אמיתיים
-        this.nodes.selectAll('.real-favicon')
-            .attr('width', 12 + iconScale * 8)
-            .attr('height', 12 + iconScale * 8)
-            .attr('x', -(6 + iconScale * 4))
-            .attr('y', -(6 + iconScale * 4));
-    }
-
-    updateFaviconDisplay(zoomScale) {
-        if (!this.nodes) return;
-        
-        // החלפה לפביקונים אמיתיים ברמת זום גבוהה
-        const useRealFavicons = zoomScale > 1.8; // הורדתי את הסף
-        const self = this; // שמירת הקשר
-        
-        this.nodes.selectAll('.bookmark-icon').each(function(d) {
-            const iconElement = d3.select(this);
-            
-            if (useRealFavicons && d.data.url) {
-                const realFaviconUrl = self.getRealFaviconUrl(d.data.url);
-                if (realFaviconUrl) {
-                    // החלפה לתמונת פביקון אמיתית
-                    iconElement.style('display', 'none');
-                    
-                    // בדיקה אם כבר יש תמונה
-                    let imageElement = d3.select(iconElement.node().parentNode).select('.real-favicon');
-                    if (imageElement.empty()) {
-                        imageElement = d3.select(iconElement.node().parentNode)
-                            .append('image')
-                            .attr('class', 'real-favicon')
-                            .attr('width', 16)
-                            .attr('height', 16)
-                            .attr('x', -8)
-                            .attr('y', -8);
-                    }
-                    
-                    imageElement
-                        .style('display', 'block')
-                        .attr('href', realFaviconUrl);
+        this.root.descendants().forEach(node => {
+            if (node.children && node.depth > 0) { // רק תיקיות שאינן השורש
+                const distance = Math.sqrt(
+                    Math.pow(node.x - x, 2) + Math.pow(node.y - y, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closest = node;
                 }
-            } else {
-                // חזרה לאימוג'ים
-                iconElement.style('display', 'block');
-                d3.select(iconElement.node().parentNode).select('.real-favicon').style('display', 'none');
             }
         });
+        
+        return closest;
     }
 
-    shouldShowNode(node) {
-        const level = this.currentZoomLevel;
-        const depth = node.depth;
+    setFocus(node) {
+        if (this.focusedNode === node) return;
         
-        switch (level) {
-            case 1: return depth <= 1; // רק שורש ותיקיות עיקריות
-            case 2: return depth <= 2; // עד תת-תיקיות
-            case 3: return depth <= 3 || !node.data.url; // עד רמה 3 או תיקיות
-            case 4: return true; // הכל
-            default: return true;
+        console.log('🎯 מיקוד על:', node.data.name);
+        this.focusedNode = node;
+        this.focusLevel = 1;
+        
+        // הרחבת התיקיה המיוקדת
+        if (node._children) {
+            node.children = node._children;
+            node._children = null;
+            this.expandedNodes.add(node.data.name);
         }
+        
+        // עדכון הצגה
+        this.updateFocusDisplay();
+    }
+
+    clearFocus() {
+        if (!this.focusedNode) return;
+        
+        console.log('🌸 ביטול מיקוד');
+        this.focusedNode = null;
+        this.focusLevel = 0;
+        
+        // עדכון הצגה
+        this.updateFocusDisplay();
+    }
+
+    updateFocusDisplay() {
+        if (!this.nodes) return;
+        
+        if (this.focusedNode) {
+            // מצב מיקוד
+            this.nodes.transition()
+                .duration(600)
+                .style('opacity', d => {
+                    if (d === this.focusedNode) return 1; // הנוד המיוקד
+                    if (d.parent === this.focusedNode) return 1; // הילדים שלו
+                    if (d === this.focusedNode.parent) return 0.7; // ההורה שלו
+                    return 0.2; // כל השאר מעומעמים
+                })
+                .attr('transform', d => {
+                    // סידור מחדש של הילדים של הנוד המיוקד
+                    if (d.parent === this.focusedNode) {
+                        const siblings = this.focusedNode.children;
+                        const index = siblings.indexOf(d);
+                        const position = this.calculateFocusedChildPosition(d, index, siblings.length);
+                        return `translate(${position.x},${position.y}) scale(1)`;
+                    }
+                    return `translate(${d.x},${d.y}) scale(1)`;
+                });
+            
+            // עדכון קווים
+            this.links.transition()
+                .duration(600)
+                .style('opacity', d => {
+                    if (d.source === this.focusedNode || d.target === this.focusedNode) return 1;
+                    if (d.source.parent === this.focusedNode || d.target.parent === this.focusedNode) return 0.8;
+                    return 0.1;
+                })
+                .attr('d', d => this.calculateFocusedLinkPath(d));
+            
+        } else {
+            // מצב רגיל - חזרה למיקומים מקוריים
+            this.nodes.transition()
+                .duration(600)
+                .style('opacity', 1)
+                .attr('transform', d => `translate(${d.x},${d.y}) scale(1)`);
+            
+            this.links.transition()
+                .duration(600)
+                .style('opacity', 0.7)
+                .attr('d', d => this.calculateNormalLinkPath(d));
+        }
+    }
+
+    calculateFocusedChildPosition(child, index, totalSiblings) {
+        const parent = this.focusedNode;
+        
+        // סידור הילדים במעגל מסודר סביב ההורה
+        const radius = 120;
+        const angleStep = (2 * Math.PI) / totalSiblings;
+        const angle = index * angleStep;
+        
+        const x = parent.x + Math.cos(angle) * radius;
+        const y = parent.y + Math.sin(angle) * radius;
+        
+        // עדכון המיקום בנוד
+        child.focusX = x;
+        child.focusY = y;
+        
+        return { x, y };
+    }
+
+    calculateFocusedLinkPath(d) {
+        if (d.source === this.focusedNode && d.target.focusX) {
+            // קו מההורה המיוקד לילד במיקום החדש
+            return `M${d.source.x},${d.source.y}L${d.target.focusX},${d.target.focusY}`;
+        }
+        return this.calculateNormalLinkPath(d);
+    }
+
+    calculateNormalLinkPath(d) {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // עיקול קל לענפים ארוכים
+        const curvature = Math.min(distance * 0.15, 30);
+        const midX = (d.source.x + d.target.x) / 2;
+        const midY = (d.source.y + d.target.y) / 2;
+        
+        // הוספת נקודת ביניים מעט בצד לעיקול טבעי
+        const perpX = -dy / distance * curvature;
+        const perpY = dx / distance * curvature;
+        
+        return `M${d.source.x},${d.source.y}Q${midX + perpX},${midY + perpY} ${d.target.x},${d.target.y}`;
     }
 
     setupEventListeners() {
@@ -392,6 +438,9 @@ class OrganicBookmarkGarden {
         document.getElementById('resetBtn').addEventListener('click', () => this.resetView());
         document.getElementById('addNodeBtn').addEventListener('click', () => this.addRandomBranch());
         document.getElementById('exportBtn').addEventListener('click', () => this.exportStructure());
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            document.getElementById('helpOverlay').style.display = 'flex';
+        });
 
         // גודל חלון
         window.addEventListener('resize', () => this.handleResize());
@@ -402,6 +451,12 @@ class OrganicBookmarkGarden {
                 searchInput.value = '';
                 this.searchTerm = '';
                 this.highlightSearch();
+                this.clearFocus(); // ביטול מיקוד עם ESC
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                // F למיקוד על התיקיה הקרובה למרכז
+                const centerNode = this.findClosestFolder(this.centerX, this.centerY);
+                if (centerNode) this.setFocus(centerNode);
             }
         });
     }
@@ -619,10 +674,18 @@ class OrganicBookmarkGarden {
             .on('mouseover', (event, d) => this.showTooltip(event, d))
             .on('mouseout', () => this.hideTooltip())
             .on('click', (event, d) => this.handleNodeClick(d))
+            .on('dblclick', (event, d) => {
+                // לחיצה כפולה למיקוד על תיקיות
+                if (d.children || d._children) {
+                    this.setFocus(d);
+                }
+            })
             .call(this.setupDragBehavior());
 
-        // עדכון רמת פירוט
-        this.updateNodeVisibility();
+        // אם יש מיקוד פעיל, עדכן את התצוגה
+        if (this.focusedNode) {
+            this.updateFocusDisplay();
+        }
     }
 
     getNodeRadius(d) {
@@ -758,17 +821,9 @@ class OrganicBookmarkGarden {
             // הרחבת נוד "עוד..."
             this.expandMoreNode(d);
         } else if (d.children || d._children) {
-            // הרחבה/כיווץ של ענף
+            // לחיצה כפולה למיקוד, לחיצה רגילה להרחבה/כיווץ
             this.toggleNode(d);
         }
-    }
-
-    expandMoreNode(d) {
-        console.log('➕ מרחיב נוד "עוד..."');
-        // כאן אפשר להוסיף פונקציונליות להרחבת פריטים נוספים
-        // לעת עתה פשוט נעלם את הנוד
-        d.data.isMore = false;
-        this.updateVisualization();
     }
 
     toggleNode(d) {
@@ -784,6 +839,14 @@ class OrganicBookmarkGarden {
         
         // חישוב מיקומים מחדש בסגנון ענפים
         this.calculateBranchPositions();
+        this.updateVisualization();
+    }
+
+    expandMoreNode(d) {
+        console.log('➕ מרחיב נוד "עוד..."');
+        // כאן אפשר להוסיף פונקציונליות להרחבת פריטים נוספים
+        // לעת עתה פשוט נעלם את הנוד
+        d.data.isMore = false;
         this.updateVisualization();
     }
 
@@ -806,6 +869,7 @@ class OrganicBookmarkGarden {
     resetView() {
         console.log('🔄 איפוס תצוגה...');
         
+        this.clearFocus(); // ביטול מיקוד
         this.expandedNodes.clear();
         this.searchTerm = '';
         document.getElementById('searchInput').value = '';

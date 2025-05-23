@@ -302,6 +302,54 @@
             backdrop-filter: blur(10px);
             font-size: 12px;
         }
+
+        .help-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .help-content {
+            background: rgba(20, 20, 40, 0.95);
+            border: 2px solid rgba(79, 195, 247, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            color: white;
+            text-align: right;
+        }
+
+        .help-content h3 {
+            color: #4fc3f7;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .help-content ul {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .help-content li {
+            margin: 12px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-right: 3px solid #4fc3f7;
+        }
+
+        .help-content strong {
+            color: #81c784;
+        }
     </style>
 </head>
 <body>
@@ -316,6 +364,7 @@
                 <button class="btn" id="resetBtn">איפוס תצוגה</button>
                 <button class="btn" id="addNodeBtn">הוסף ענף</button>
                 <button class="btn" id="exportBtn">ייצא מבנה</button>
+                <button class="btn" id="helpBtn">עזרה</button>
             </div>
         </div>
     </div>
@@ -355,6 +404,22 @@
         <div>סך הכל: <span id="totalNodes">0</span> סימניות</div>
         <div>מוצגות: <span id="visibleNodes">0</span></div>
         <div>ענפים פתוחים: <span id="expandedBranches">0</span></div>
+    </div>
+
+    <!-- הודעת עזרה -->
+    <div class="help-overlay" id="helpOverlay" style="display: none;">
+        <div class="help-content">
+            <h3>🌸 איך להשתמש בגן הדיגיטלי</h3>
+            <ul>
+                <li><strong>לחיצה כפולה על תיקיה:</strong> מיקוד על התיקיה (Focus Mode)</li>
+                <li><strong>גרירה ואיפוס:</strong> ניווט בגן</li>
+                <li><strong>מקש F:</strong> מיקוד על התיקיה הקרובה למרכז</li>
+                <li><strong>מקש ESC:</strong> ביטול מיקוד וחזרה לתצוגה כללית</li>
+                <li><strong>לחיצה רגילה:</strong> הרחבה/כיווץ תיקיות</li>
+                <li><strong>זום חכם:</strong> התקרבות לתיקיה מפעילה מיקוד אוטומטי</li>
+            </ul>
+            <button class="btn" onclick="document.getElementById('helpOverlay').style.display='none'">סגור</button>
+        </div>
     </div>
 
     <script src="organic-bookmarks.js"></script>
