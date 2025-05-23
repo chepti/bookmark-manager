@@ -1,58 +1,47 @@
 {
   "manifest_version": 3,
   "name": "מארגן הסימניות המתקדם",
-  "version": "1.0",
-  "description": "תוסף מתקדם לארגון וניהול סימניות עם תצוגה מקדימה, קטגוריזציה אוטומטית ושיתוף קל",
-  
-  "permissions": [
-    "bookmarks",
-    "storage",
-    "notifications",
-    "contextMenus",
-    "activeTab",
-    "scripting"
-  ],
-  
-  "host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
-  
-  "background": {
-    "service_worker": "background.js"
-  },
-  
-  "content_scripts": [
-    {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
-      "run_at": "document_end"
-    }
-  ],
-  
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "מארגן הסימניות המתקדם",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  
+  "description": "כלי מתקדם לניהול וארגון סימניות בכרום עם ממשק יפה ונוח",
+  "version": "2.0",
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  
-  "web_accessible_resources": [
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.google.com/*",
+    "https://icons.duckduckgo.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
     {
-      "resources": ["icons/*"],
-      "matches": ["<all_urls>"]
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
-  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "מארגן הסימניות המתקדם"
+  },
+  "options_page": "bookmarks.html",
+  "commands": {
+    "open-bookmarks": {
+      "description": "פתח את מארגן הסימניות בדף מלא",
+      "suggested_key": {
+        "default": "Ctrl+Shift+B",
+        "mac": "Command+Shift+B"
+      }
+    }
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   }

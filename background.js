@@ -1,321 +1,153 @@
 // Background script for the bookmark manager extension
 
-// Install event - set up initial data
-chrome.runtime.onInstalled.addListener((details) => {
-    console.log('Bookmark Manager Extension installed');
-    
-    // Create context menu for bookmarks
-    chrome.contextMenus.create({
-        id: 'organizeBookmark',
-        title: 'ארגן בסימניות',
-        contexts: ['page', 'link']
-    });
-    
-    chrome.contextMenus.create({
-        id: 'addToBookmarks',
-        title: 'הוסף לסימניות המובנות',
-        contexts: ['page', 'link']
-    });
-});
+console.log('🚀 מארגן הסימניות המתקדם - Background Script פועל');
 
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'organizeBookmark') {
-        // Open the bookmark organizer
-        chrome.action.openPopup();
-    } else if (info.menuItemId === 'addToBookmarks') {
-        // Add current page to bookmarks with smart categorization
-        addSmartBookmark(tab, info.linkUrl);
+// התקנה ראשונית
+chrome.runtime.onInstalled.addListener(async (details) => {
+    console.log('📦 התוסף הותקן:', details.reason);
+    
+    if (details.reason === 'install') {
+        console.log('🎉 התקנה ראשונית - פותח דף הגדרות');
+        // פתיחת הדף המלא בהתקנה ראשונית
+        await chrome.tabs.create({
+            url: chrome.runtime.getURL('bookmarks.html')
+        });
+        
+        // הודעה על התקנה מוצלחת
+        showNotification('התקנה מוצלחת!', 'מארגן הסימניות המתקדם מוכן לשימוש');
+    } else if (details.reason === 'update') {
+        console.log('🔄 עדכון התוסף');
+        showNotification('עדכון מוצלח!', 'מארגן הסימניות עודכן לגרסה החדשה');
     }
 });
 
-// Smart bookmark categorization
-async function addSmartBookmark(tab, linkUrl = null) {
+// טיפול בפקודות מקלדת
+chrome.commands.onCommand.addListener(async (command) => {
+    console.log('⌨️ פקודת מקלדת:', command);
+    
+    if (command === 'open-bookmarks') {
+        await openBookmarksPage();
+    }
+});
+
+// פתיחת הדף המלא
+async function openBookmarksPage() {
     try {
-        const url = linkUrl || tab.url;
-        const title = tab.title;
-        
-        // Analyze the URL to suggest a category
-        const category = categorizeUrl(url);
-        
-        // Create bookmark in the suggested category
-        const bookmark = await chrome.bookmarks.create({
-            parentId: await getOrCreateCategoryFolder(category),
-            title: title,
-            url: url
+        // בדיקה אם יש כבר כרטיסיה פתוחה עם הדף שלנו
+        const tabs = await chrome.tabs.query({
+            url: chrome.runtime.getURL('bookmarks.html')
         });
         
-        // Show notification
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: chrome.runtime.getURL('icons/icon48.png'),
-            title: 'סימנייה נוספה',
-            message: `${title} נוסף לקטגוריה: ${category}`
-        });
-        
+        if (tabs.length > 0) {
+            // אם יש כרטיסיה פתוחה - עבור אליה
+            await chrome.tabs.update(tabs[0].id, { active: true });
+            await chrome.windows.update(tabs[0].windowId, { focused: true });
+            console.log('🔄 עבר לכרטיסיה קיימת');
+        } else {
+            // אם אין - פתח כרטיסיה חדשה
+            await chrome.tabs.create({
+                url: chrome.runtime.getURL('bookmarks.html')
+            });
+            console.log('✨ פתח כרטיסיה חדשה');
+        }
     } catch (error) {
-        console.error('Error adding smart bookmark:', error);
+        console.error('❌ שגיאה בפתיחת הדף:', error);
     }
 }
 
-// Categorize URL based on domain and content
-function categorizeUrl(url) {
-    const domain = new URL(url).hostname.toLowerCase();
-    
-    // Social media sites
-    if (domain.includes('facebook') || domain.includes('twitter') || 
-        domain.includes('instagram') || domain.includes('linkedin') ||
-        domain.includes('tiktok') || domain.includes('youtube')) {
-        return 'רשתות חברתיות';
-    }
-    
-    // News sites
-    if (domain.includes('news') || domain.includes('ynet') || 
-        domain.includes('walla') || domain.includes('haaretz') ||
-        domain.includes('maariv') || domain.includes('calcalist')) {
-        return 'חדשות';
-    }
-    
-    // Shopping sites
-    if (domain.includes('amazon') || domain.includes('ebay') || 
-        domain.includes('aliexpress') || domain.includes('zap') ||
-        domain.includes('shop') || domain.includes('store')) {
-        return 'קניות';
-    }
-    
-    // Educational/Learning sites
-    if (domain.includes('wikipedia') || domain.includes('coursera') || 
-        domain.includes('udemy') || domain.includes('khan') ||
-        domain.includes('edu') || domain.includes('learn')) {
-        return 'למידה';
-    }
-    
-    // Entertainment
-    if (domain.includes('netflix') || domain.includes('spotify') || 
-        domain.includes('entertainment') || domain.includes('games') ||
-        domain.includes('movie') || domain.includes('music')) {
-        return 'בידור';
-    }
-    
-    // Work/Professional
-    if (domain.includes('gmail') || domain.includes('office') || 
-        domain.includes('slack') || domain.includes('zoom') ||
-        domain.includes('drive') || domain.includes('docs')) {
-        return 'עבודה';
-    }
-    
-    // Tech/Development
-    if (domain.includes('github') || domain.includes('stackoverflow') || 
-        domain.includes('dev') || domain.includes('tech') ||
-        domain.includes('code') || domain.includes('programming')) {
-        return 'טכנולוגיה';
-    }
-    
-    // Default category
-    return 'כללי';
-}
+// האזנה ללחיצה על האייקון (אופציונלי)
+chrome.action.onClicked.addListener(async (tab) => {
+    console.log('🖱️ לחיצה על האייקון');
+    // אופציה: פתח דף מלא במקום popup
+    // await openBookmarksPage();
+});
 
-// Get or create category folder
-async function getOrCreateCategoryFolder(categoryName) {
+// טיפול בהודעות מסקריפטים אחרים
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('📨 הודעה נתקבלה:', message);
+    
+    switch (message.action) {
+        case 'openBookmarks':
+            openBookmarksPage();
+            sendResponse({ success: true });
+            break;
+            
+        case 'getBookmarkCount':
+            getBookmarkCount().then(count => {
+                sendResponse({ count });
+            });
+            return true; // אסינכרוני
+            
+        case 'showNotification':
+            showNotification(message.title, message.message);
+            sendResponse({ success: true });
+            break;
+            
+        default:
+            console.log('❓ פעולה לא מוכרת:', message.action);
+            sendResponse({ error: 'פעולה לא מוכרת' });
+    }
+});
+
+// ספירת סימניות (לסטטיסטיקות)
+async function getBookmarkCount() {
     try {
-        // First, check if the category folder exists
         const bookmarkTree = await chrome.bookmarks.getTree();
-        const bookmarkBar = bookmarkTree[0].children[0]; // Bookmark bar
+        let count = 0;
         
-        // Look for existing category folder
-        const existingFolder = bookmarkBar.children?.find(
-            child => child.title === categoryName && !child.url
-        );
-        
-        if (existingFolder) {
-            return existingFolder.id;
+        function countBookmarks(node) {
+            if (node.url) {
+                count++;
+            }
+            if (node.children) {
+                node.children.forEach(countBookmarks);
+            }
         }
         
-        // Create new category folder
-        const newFolder = await chrome.bookmarks.create({
-            parentId: bookmarkBar.id,
-            title: categoryName
-        });
-        
-        return newFolder.id;
-        
+        bookmarkTree.forEach(countBookmarks);
+        return count;
     } catch (error) {
-        console.error('Error managing category folder:', error);
-        return '1'; // Default to bookmark bar
+        console.error('❌ שגיאה בספירת סימניות:', error);
+        return 0;
     }
 }
 
-// Bookmark change listener for syncing
+// הצגת הודעות (אם יש הרשאות)
+function showNotification(title, message) {
+    try {
+        // נסה ליצור התראה אם יש הרשאות
+        if (chrome.notifications) {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon48.png',
+                title: title,
+                message: message
+            });
+        } else {
+            console.log('📢 הודעה:', title, '-', message);
+        }
+    } catch (error) {
+        console.log('📢 הודעה:', title, '-', message);
+    }
+}
+
+// ניטור שינויים בסימניות (אופציונלי)
 chrome.bookmarks.onCreated.addListener((id, bookmark) => {
-    console.log('Bookmark created:', bookmark);
-    // Could trigger UI refresh if popup is open
+    console.log('➕ סימנייה חדשה נוצרה:', bookmark.title);
 });
 
 chrome.bookmarks.onRemoved.addListener((id, removeInfo) => {
-    console.log('Bookmark removed:', id);
-    // Could trigger UI refresh if popup is open
+    console.log('🗑️ סימנייה נמחקה:', id);
 });
 
 chrome.bookmarks.onChanged.addListener((id, changeInfo) => {
-    console.log('Bookmark changed:', id, changeInfo);
-    // Could trigger UI refresh if popup is open
+    console.log('✏️ סימנייה עודכנה:', id, changeInfo);
 });
 
-// Storage management for user preferences
-async function saveUserPreferences(preferences) {
-    try {
-        await chrome.storage.sync.set({ userPreferences: preferences });
-    } catch (error) {
-        console.error('Error saving preferences:', error);
-    }
-}
+// ניקוי זיכרון cache (כל שעה)
+setInterval(() => {
+    console.log('🧹 ניקוי cache תקופתי');
+    // כאן ניתן להוסיף ניקוי cache אם נצטרך
+}, 60 * 60 * 1000); // שעה
 
-async function getUserPreferences() {
-    try {
-        const result = await chrome.storage.sync.get(['userPreferences']);
-        return result.userPreferences || {
-            defaultView: 'grid',
-            sortBy: 'title',
-            showPreviews: true,
-            autoCategories: true
-        };
-    } catch (error) {
-        console.error('Error getting preferences:', error);
-        return {};
-    }
-}
-
-// Export bookmarks functionality
-async function exportBookmarks() {
-    try {
-        const bookmarkTree = await chrome.bookmarks.getTree();
-        const exportData = {
-            timestamp: new Date().toISOString(),
-            bookmarks: bookmarkTree,
-            version: '1.0'
-        };
-        
-        return exportData;
-    } catch (error) {
-        console.error('Error exporting bookmarks:', error);
-        throw error;
-    }
-}
-
-// Import bookmarks functionality
-async function importBookmarks(importData) {
-    try {
-        // Validate import data
-        if (!importData.bookmarks || !Array.isArray(importData.bookmarks)) {
-            throw new Error('Invalid bookmark data format');
-        }
-        
-        // Create import folder
-        const importFolder = await chrome.bookmarks.create({
-            parentId: '1',
-            title: `Imported - ${new Date().toLocaleDateString('he-IL')}`
-        });
-        
-        // Recursively import bookmarks
-        await importBookmarkNode(importData.bookmarks[0], importFolder.id);
-        
-        return true;
-    } catch (error) {
-        console.error('Error importing bookmarks:', error);
-        throw error;
-    }
-}
-
-async function importBookmarkNode(node, parentId) {
-    if (node.children) {
-        // Create folder
-        const folder = await chrome.bookmarks.create({
-            parentId: parentId,
-            title: node.title || 'Unnamed Folder'
-        });
-        
-        // Import children
-        for (const child of node.children) {
-            await importBookmarkNode(child, folder.id);
-        }
-    } else if (node.url) {
-        // Create bookmark
-        await chrome.bookmarks.create({
-            parentId: parentId,
-            title: node.title || 'Untitled',
-            url: node.url
-        });
-    }
-}
-
-// Message handling for communication with popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    switch (request.action) {
-        case 'exportBookmarks':
-            exportBookmarks()
-                .then(data => sendResponse({ success: true, data }))
-                .catch(error => sendResponse({ success: false, error: error.message }));
-            return true; // Keep message channel open for async response
-            
-        case 'importBookmarks':
-            importBookmarks(request.data)
-                .then(() => sendResponse({ success: true }))
-                .catch(error => sendResponse({ success: false, error: error.message }));
-            return true;
-            
-        case 'savePreferences':
-            saveUserPreferences(request.preferences)
-                .then(() => sendResponse({ success: true }))
-                .catch(error => sendResponse({ success: false, error: error.message }));
-            return true;
-            
-        case 'getPreferences':
-            getUserPreferences()
-                .then(prefs => sendResponse({ success: true, preferences: prefs }))
-                .catch(error => sendResponse({ success: false, error: error.message }));
-            return true;
-            
-        default:
-            sendResponse({ success: false, error: 'Unknown action' });
-    }
-});
-
-// Periodic cleanup of old temporary data
-chrome.alarms.create('cleanup', { periodInMinutes: 60 });
-
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'cleanup') {
-        // Clean up old temporary data, cache, etc.
-        console.log('Running periodic cleanup...');
-    }
-});
-
-// Analytics for usage patterns (privacy-friendly)
-function trackUsage(action) {
-    // Only track general usage patterns, no personal data
-    chrome.storage.local.get(['usageStats'], (result) => {
-        const stats = result.usageStats || {};
-        const today = new Date().toDateString();
-        
-        if (!stats[today]) {
-            stats[today] = {};
-        }
-        
-        stats[today][action] = (stats[today][action] || 0) + 1;
-        
-        // Keep only last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        Object.keys(stats).forEach(date => {
-            if (new Date(date) < thirtyDaysAgo) {
-                delete stats[date];
-            }
-        });
-        
-        chrome.storage.local.set({ usageStats: stats });
-    });
-}
-
-// Extension startup
-console.log('Bookmark Manager Extension background script loaded');
+console.log('✅ Background Script מוכן לפעולה');
