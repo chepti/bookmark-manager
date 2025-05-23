@@ -258,6 +258,7 @@ class OrganicBookmarkGarden {
             console.log(`🔍 עדכון רמת פירוט: ${newLevel}`);
             this.updateNodeVisibility();
             this.updateFaviconDisplay(zoomScale);
+            this.updateSizesForZoom(zoomScale);
         }
     }
 
@@ -283,11 +284,52 @@ class OrganicBookmarkGarden {
         });
     }
 
+    updateSizesForZoom(zoomScale) {
+        if (!this.nodes) return;
+        
+        // חישוב גדלים הפוכים לזום כדי לשמור על גודל קבוע
+        const iconScale = Math.max(0.3, Math.min(1.2, 1 / Math.sqrt(zoomScale)));
+        const textScale = Math.max(0.4, Math.min(1, 0.8 / Math.sqrt(zoomScale)));
+        
+        // בקרה על תצוגת טקסטים לפי זום
+        const showLabels = zoomScale > 0.8; // מציג טקסטים רק לנודים חשובים או בזום גבוה
+        const showCounts = zoomScale > 0.6; // מציג מונים בזום נמוך יותר
+        
+        // עדכון גדלי אייקונים
+        this.nodes.selectAll('.bookmark-icon')
+            .attr('font-size', d => {
+                const baseSize = this.getIconSize(d, false); // ללא יחידות
+                return (parseFloat(baseSize) * iconScale) + 'px';
+            });
+        
+        // עדכון תצוגת טקסטים
+        this.nodes.selectAll('.bookmark-text')
+            .attr('font-size', (8 + textScale * 4) + 'px')
+            .style('opacity', d => {
+                // הצגת טקסטים רק לנודים חשובים או בזום גבוה
+                if (!showLabels) return 0;
+                if (d.depth === 0) return 1; // שורש תמיד
+                if (d.children && d.children.length > 3) return 1; // תיקיות גדולות
+                return showLabels && zoomScale > 1.2 ? 1 : 0; // אחרים רק בזום גבוה
+            });
+        
+        this.nodes.selectAll('.cluster-count')
+            .attr('font-size', (6 + textScale * 2) + 'px')
+            .style('opacity', showCounts ? 1 : 0);
+        
+        // עדכון גדלי פביקונים אמיתיים
+        this.nodes.selectAll('.real-favicon')
+            .attr('width', 12 + iconScale * 8)
+            .attr('height', 12 + iconScale * 8)
+            .attr('x', -(6 + iconScale * 4))
+            .attr('y', -(6 + iconScale * 4));
+    }
+
     updateFaviconDisplay(zoomScale) {
         if (!this.nodes) return;
         
         // החלפה לפביקונים אמיתיים ברמת זום גבוהה
-        const useRealFavicons = zoomScale > 2;
+        const useRealFavicons = zoomScale > 1.8; // הורדתי את הסף
         const self = this; // שמירת הקשר
         
         this.nodes.selectAll('.bookmark-icon').each(function(d) {
@@ -586,24 +628,25 @@ class OrganicBookmarkGarden {
     getNodeRadius(d) {
         let baseRadius;
         
-        if (d.depth === 0) baseRadius = 40; // שורש
-        else if (d.data.isMore) baseRadius = 15; // נוד "עוד..."
-        else if (d.children) baseRadius = Math.min(25, 12 + d.children.length * 0.8); // תיקיות
-        else baseRadius = 10; // סימניות רגילות
+        if (d.depth === 0) baseRadius = 35; // שורש - הקטנתי קצת
+        else if (d.data.isMore) baseRadius = 12; // נוד "עוד..."
+        else if (d.children) baseRadius = Math.min(22, 10 + d.children.length * 0.6); // תיקיות - הקטנתי
+        else baseRadius = 8; // סימניות רגילות - הקטנתי
         
         // הגבלה לגודל מקסימלי
-        return Math.min(baseRadius, this.maxNodeRadius);
+        return Math.min(baseRadius, this.maxNodeRadius * 0.8); // הקטנתי את המקסימום
     }
 
-    getIconSize(d) {
+    getIconSize(d, withUnits = true) {
         const radius = this.getNodeRadius(d);
-        return Math.max(10, Math.min(radius * 0.7, 20)) + 'px';
+        const size = Math.max(8, Math.min(radius * 0.6, 16)); // הקטנתי את גדל האייקון
+        return withUnits ? size + 'px' : size;
     }
 
     getDisplayName(d) {
         const name = d.data.name;
         const radius = this.getNodeRadius(d);
-        const maxLength = radius > 20 ? 15 : 10;
+        const maxLength = radius > 15 ? 12 : 8; // הקטנתי את אורך הטקסט
         return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
     }
 
